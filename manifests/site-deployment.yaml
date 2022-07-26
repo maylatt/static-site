@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: site-deployment
+  namespace: site
+  labels:
+    app: site
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: site
+  template:
+    metadata:
+      labels:
+        app: site
+    spec:
+      volumes:
+      - name: html-files
+        emptyDir: {}
+      initContainers:
+      - name: git-sync-init
+        image: k8s.gcr.io/git-sync/git-sync:v3.6.0
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: html-files
+          mountPath: /tmp/git/root
+        env:
+        - name: GIT_SYNC_REPO
+          value: "https://github.com/maylatt/static-site.git"
+        - name: GIT_SYNC_BRANCH
+          value: "edc-ai1"
+        - name: GIT_SYNC_ROOT
+          value: /tmp/git/root
+        - name: GIT_SYNC_DEST
+          value: repo
+        - name: GIT_SYNC_ONE_TIME
+          value: "true"
+      containers:
+      - name: static-site
+        image: maylatt/static-site:1.0.0
+        imagePullPolicy: IfNotPresent
+        resources: {}
+        volumeMounts:
+        - name: html-files
+          mountPath: /app/git-sync
+        env:
+        - name: PAGES_SUB_PATH
+          value: git-sync/repo/pages-html
+        ports:
+        - containerPort: 8000
+      - name: git-sync
+        image: k8s.gcr.io/git-sync/git-sync:v3.6.0
+        imagePullPolicy: IfNotPresent
+        resources: {}
+        volumeMounts:
+        - name: html-files
+          mountPath: /tmp/git/root
+        env:
+        - name: GIT_SYNC_REPO
+          value: "https://github.com/maylatt/static-site.git"
+        - name: GIT_SYNC_BRANCH
+          value: "edc-ai1"
+        - name: GIT_SYNC_ROOT
+          value: /tmp/git/root
+        - name: GIT_SYNC_DEST
+          value: repo
+        - name: GIT_SYNC_PERIOD
+          value: "120"
